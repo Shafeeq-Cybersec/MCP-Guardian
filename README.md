@@ -16,9 +16,9 @@ Panimalar Engineering College — Cyber Security (Software Track)
 
 ## 🌟 Visual Overview
 
-| Overview Dashboard | Attack Propagation Graph |
+| Attack Propagation Graph | Overview Dashboard |
 |---|---|
-| ![SOC Overview Dashboard](./docs/screenshots/05-overview-dashboard.jpeg) | ![Attack Propagation Graph](./docs/screenshots/09-attack-propagation-graph.jpeg) |
+| ![Attack Propagation Graph](./docs/screenshots/09-attack-propagation-graph.jpeg) | ![SOC Overview Dashboard](./docs/screenshots/05-overview-dashboard.jpeg) |
 
 ---
 
