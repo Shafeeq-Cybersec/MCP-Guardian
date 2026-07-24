@@ -207,9 +207,6 @@ export const useTelemetry = create<TelemetryState>((set, get) => ({
   refreshStats: async () => {
     try {
       const apiStats = await fetchStats();
-      // Update KPI stats directly from the authoritative counter, also
-      // realign the totals accumulator so subsequent ingest() calls are
-      // consistent with the server's view.
       const totals = {
         inspected: apiStats.inspected,
         blocked: apiStats.blocked,
@@ -224,7 +221,9 @@ export const useTelemetry = create<TelemetryState>((set, get) => ({
         latencySum: apiStats.avgLatencyMs * Math.max(apiStats.inspected, 1),
         riskSum: apiStats.avgRiskScore * Math.max(apiStats.inspected, 1),
       };
-      set({ stats: apiStats, totals });
+      // Also rebuild traffic from the latest events so the chart stays current.
+      const traffic = buildTrafficSeries(get().events);
+      set({ stats: apiStats, totals, traffic });
     } catch {
       // Silently skip — stale stats are better than a crash.
     }
@@ -245,17 +244,10 @@ export const useTelemetry = create<TelemetryState>((set, get) => ({
     else totals.allowed += 1;
     if (event.category !== "benign") totals.threatsToday += 1;
 
-    // Roll the current-hour traffic bucket forward.
-    const traffic = [...s.traffic];
-    if (traffic.length) {
-      const last = { ...traffic[traffic.length - 1] };
-      last.inspected += 1;
-      if (event.verdict === "BLOCK") last.blocked += 1;
-      else if (event.verdict === "QUARANTINE") last.quarantined += 1;
-      else if (event.verdict === "SANITIZE") last.sanitized += 1;
-      else last.allowed += 1;
-      traffic[traffic.length - 1] = last;
-    }
+    // Rebuild the full traffic series from the updated event list so the
+    // chart always has correct data regardless of whether hydration has
+    // completed yet.  buildTrafficSeries is O(n) over ≤250 events — fast.
+    const traffic = buildTrafficSeries(events);
 
     // Promote high-risk events into incidents.
     let incidents = s.incidents;
