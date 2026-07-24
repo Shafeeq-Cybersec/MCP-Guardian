@@ -246,37 +246,62 @@ async def run_turn(
     }
 
     # 4. Outbound inspection of the tool's response.
+    #    Skip inspection entirely when the tool failed — the error string is an
+    #    internal server message, not document content, and scanning it would
+    #    produce false-positive threat verdicts (e.g. a file path in the error
+    #    message triggering the encoded-payload detector).
     yield {"type": "guardian_scan_start"}
-    outbound_event = await _inspect(
-        result.content,
-        direction="outbound",
-        source=f"tool:{tool_name}",
-        target="agent:guardian-assistant",
-        tool=tool_name,
-    )
-    await asyncio.sleep(SCAN_PACING_SECONDS)
-    yield {
-        "type": "guardian_verdict",
-        **_verdict_payload(outbound_event, content=result.content, with_preview=True),
-    }
+    if result.is_error:
+        # Emit a synthetic benign verdict so the UI pipeline trace is complete.
+        yield {
+            "type": "guardian_verdict",
+            "riskScore": 0,
+            "category": "benign",
+            "verdict": "ALLOW",
+            "severity": "low",
+            "explanation": "Tool returned an error — outbound scan skipped.",
+            "recommendedAction": "Forward without modification.",
+            "signals": [],
+            "latencyMs": 0,
+            "evidence": [],
+            "sanitizedPreview": None,
+        }
+        outbound_verdict = "ALLOW"
+        outbound_category = "benign"
+        outbound_matched: list[str] = []
+    else:
+        outbound_event = await _inspect(
+            result.content,
+            direction="outbound",
+            source=f"tool:{tool_name}",
+            target="agent:guardian-assistant",
+            tool=tool_name,
+        )
+        await asyncio.sleep(SCAN_PACING_SECONDS)
+        yield {
+            "type": "guardian_verdict",
+            **_verdict_payload(outbound_event, content=result.content, with_preview=True),
+        }
+        outbound_verdict = outbound_event.verdict.value
+        outbound_category = outbound_event.category.value
+        outbound_matched = _matched_indicators(outbound_event)
 
     # 5. Final reply - built from the ACTUAL execution path.
-    verdict = outbound_event.verdict.value
     tool_failed = result.is_error
     # The concrete document/target the tool acted on, for a personalized reply.
     target = args.get("name") if tool_name in ("read_document",) else None
     # Never show raw content on a threat verdict; never present an error string as content.
-    safe_result = None if (tool_failed or verdict in ("BLOCK", "QUARANTINE")) else result.content
+    safe_result = None if (tool_failed or outbound_verdict in ("BLOCK", "QUARANTINE")) else result.content
     ctx = chat_llm.ReplyContext(
         user_message=message or (f"[attached: {attachment_name}]" if attachment_name else ""),
         stage="tool",
-        verdict=verdict,
-        category=outbound_event.category.value,
+        verdict=outbound_verdict,
+        category=outbound_category,
         tool_name=tool_name,
         target=target,
         tool_succeeded=not tool_failed,
         tool_error_message=result.content if tool_failed else None,
-        matched=_matched_indicators(outbound_event),
+        matched=outbound_matched,
         tool_result=safe_result,
     )
     async for chunk in chat_llm.stream_reply(history, ctx):

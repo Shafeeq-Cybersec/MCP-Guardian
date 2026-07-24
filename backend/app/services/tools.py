@@ -55,8 +55,9 @@ async def read_document(name: str) -> ToolResult:
     if not mcp_bridge.is_available():
         return ToolResult(
             content=(
-                "The live document server isn't set up on this machine "
-                "(see mcp-servers/filesystem/README.md)."
+                "The live document server is not available on this machine. "
+                "To enable it, follow the setup instructions in the repository's "
+                "mcp-servers directory."
             ),
             is_error=True,
             is_live=False,
@@ -106,7 +107,7 @@ async def read_uploaded_document(name: str, content: str) -> ToolResult:
 async def list_documents() -> ToolResult:
     if not mcp_bridge.is_available():
         return ToolResult(
-            content="The live document server isn't set up on this machine.",
+            content="The live document server is not available on this machine.",
             is_error=True,
             is_live=False,
         )
