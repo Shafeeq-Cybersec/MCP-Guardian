@@ -61,6 +61,23 @@ class GuardianEngine:
             for d in self.detectors
         ]
 
+    def probe_latencies(self) -> dict[str, float]:
+        """Run a trivial inspection through each detector and return its
+        wall-clock latency in milliseconds.  Used by /api/health to report
+        real per-detector timing instead of zeros."""
+        from app.engine.normalizer import normalize
+
+        ctx = normalize("health check probe")
+        results: dict[str, float] = {}
+        for d in self.detectors:
+            t0 = time.perf_counter()
+            try:
+                d.inspect(ctx)
+            except Exception:  # noqa: BLE001
+                pass
+            results[d.name] = round((time.perf_counter() - t0) * 1000, 2)
+        return results
+
     # ---- core --------------------------------------------------------------
 
     async def inspect(self, req: InspectRequest) -> InspectResponse:

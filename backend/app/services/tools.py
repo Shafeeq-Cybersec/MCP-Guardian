@@ -144,15 +144,31 @@ GREETING_RE = re.compile(
     re.I,
 )
 FILE_HINT_RE = re.compile(
-    r"\b([\w.\-]+\.(?:txt|md|json|yaml|yml|csv|log))\b", re.I
+    r"\b([\w.\-]+\.(?:txt|md|json|yaml|yml|csv|log|pdf|docx?))\b", re.I
 )
 
+# Phrases that imply the user wants to read / inspect a document or file.
+_DOC_INTENT_KEYWORDS = (
+    "read", "open", "show", "view", "display", "check", "look at",
+    "what is inside", "what's inside", "what does it say", "tell me what",
+    "summarize", "summarise", "content", "contents", "inside",
+    "document", "file", "notes", "config", "report", "pdf",
+)
 
 def route_intent(message: str) -> tuple[str, dict]:
     """Decide whether/what tool to call for this message. Returns (tool, args).
 
     tool is one of: "none", "list_documents", "read_document", "web_search",
     "send_notification".
+
+    Priority order:
+      1. Greetings / empty → none
+      2. Explicit filename in message → read_document
+      3. List-files keywords → list_documents
+      4. Document-intent keywords → read_document (readme.txt as default)
+      5. Search/lookup keywords → web_search
+      6. Notification keywords → send_notification
+      7. Short messages with no clear tool → none (don't guess web_search)
     """
     text = message.strip()
     if not text or GREETING_RE.search(text):
@@ -160,24 +176,23 @@ def route_intent(message: str) -> tuple[str, dict]:
 
     lower = text.lower()
 
+    # Explicit filename wins immediately.
     file_match = FILE_HINT_RE.search(text)
     if file_match:
         return "read_document", {"name": file_match.group(1)}
 
-    if any(k in lower for k in ("list files", "what files", "show me the files", "which documents")):
+    if any(k in lower for k in ("list files", "what files", "show me the files", "which documents", "what can you access")):
         return "list_documents", {}
 
-    if any(k in lower for k in ("read the", "open the", "document", "file", "notes", "config")):
+    # Any phrase that implies reading/inspecting a document.
+    if any(k in lower for k in _DOC_INTENT_KEYWORDS):
         return "read_document", {"name": "readme.txt"}
 
-    if any(k in lower for k in ("search", "look up", "look this up", "find information", "google")):
+    if any(k in lower for k in ("search", "look up", "find information", "google", "search for")):
         return "web_search", {"query": text}
 
     if any(k in lower for k in ("email", "notify", "send a message to", "alert the team")):
         return "send_notification", {"message": text}
 
-    # Default: substantive question with no clear tool -> treat as a search.
-    if len(text.split()) > 3:
-        return "web_search", {"query": text}
-
+    # Unknown intent — return none rather than silently guessing web_search.
     return "none", {}

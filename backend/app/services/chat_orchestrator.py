@@ -155,19 +155,40 @@ async def run_turn(
     turn_id = _uid()
     yield {"type": "turn_start", "id": turn_id, "at": datetime.now(timezone.utc).isoformat()}
 
-    # 1. Inbound inspection of the user's own message.
+    # Resolve attachment state once up-front.
+    # `uploaded` is True when an attachment with readable text content was
+    # provided. `attachment_present` is True for ANY attachment (even when the
+    # frontend could not extract text — e.g. a real binary PDF).  Both flags
+    # influence routing so the document is always prioritised over the message.
+    attachment_content: str = (attachment or {}).get("content") or ""
+    attachment_name: str = (attachment or {}).get("name") or ""
+    uploaded = bool(attachment_content.strip())
+    attachment_present = bool(attachment_name)
+
+    # What to actually inspect in step 1:
+    # • If we have file content → scan that (the document is the untrusted input).
+    # • If we only have the file name (binary / oversized) → scan the name.
+    # • Otherwise → scan the user's typed message.
+    if uploaded:
+        inbound_content = attachment_content.strip()
+    elif attachment_present:
+        inbound_content = f"[user attached file: {attachment_name}]\n{message}".strip()
+    else:
+        inbound_content = message
+
+    # 1. Inbound inspection.
     yield {"type": "inbound_scan_start"}
     inbound_event = await _inspect(
-        message, direction="inbound", source="user:chat", target="agent:guardian-assistant", tool=None
+        inbound_content, direction="inbound", source="user:chat", target="agent:guardian-assistant", tool=None
     )
     await asyncio.sleep(min(SCAN_PACING_SECONDS, 0.3))
-    yield {"type": "inbound_result", **_verdict_payload(inbound_event, content=message)}
+    yield {"type": "inbound_result", **_verdict_payload(inbound_event, content=inbound_content)}
 
     if inbound_event.verdict.value in ("BLOCK", "QUARANTINE"):
         yield {"type": "thinking"}
         await asyncio.sleep(0.3)
         ctx = chat_llm.ReplyContext(
-            user_message=message,
+            user_message=message or attachment_name or "the uploaded file",
             stage="inbound_block",
             verdict=inbound_event.verdict.value,
             category=inbound_event.category.value,
@@ -178,16 +199,18 @@ async def run_turn(
         yield {"type": "done"}
         return
 
-    # 2. Decide whether a tool call is needed.
+    # 2. Decide what tool to call.
     yield {"type": "thinking"}
     await asyncio.sleep(0.35)
 
-    uploaded = bool(attachment and (attachment.get("content") or "").strip())
-
     if uploaded:
-        # A user-provided document always takes priority: read it through the
-        # real tool and inspect it.
-        tool_name, args = "read_document", {"name": attachment["name"]}
+        # Attachment with content always wins — read it through the real tool
+        # so Guardian inspects the outbound content before the AI sees it.
+        tool_name, args = "read_document", {"name": attachment_name}
+    elif attachment_present:
+        # Attachment present but content not extractable (true binary / oversized).
+        # Still route to read_document; the tool will surface a helpful error.
+        tool_name, args = "read_document", {"name": attachment_name}
     else:
         tool_name, args = tools.route_intent(message)
         if tool_name == "none":
@@ -199,8 +222,12 @@ async def run_turn(
 
     # 3. Tool execution.
     yield {"type": "tool_call", "tool": tool_name, "args": args}
-    if uploaded:
-        result = await tools.read_uploaded_document(attachment["name"], attachment["content"])
+    if (uploaded or attachment_present) and tool_name == "read_document":
+        if uploaded:
+            result = await tools.read_uploaded_document(attachment_name, attachment_content)
+        else:
+            # Binary / oversized: try reading by name from the sandbox.
+            result = await tools.read_document(attachment_name)
     elif tool_name == "read_document":
         result = await tools.read_document(args.get("name", "readme.txt"))
     elif tool_name == "list_documents":
@@ -241,7 +268,7 @@ async def run_turn(
     # Never show raw content on a threat verdict; never present an error string as content.
     safe_result = None if (tool_failed or verdict in ("BLOCK", "QUARANTINE")) else result.content
     ctx = chat_llm.ReplyContext(
-        user_message=message,
+        user_message=message or (f"[attached: {attachment_name}]" if attachment_name else ""),
         stage="tool",
         verdict=verdict,
         category=outbound_event.category.value,
