@@ -40,6 +40,13 @@ def test_inspect_public(client):
     assert r.json()["verdict"] in {"QUARANTINE", "BLOCK"}
 
 
+def test_inspect_large_document(client):
+    large_payload = "%PDF-1.4\n" + "A" * 50000 + "\n%%EOF"
+    r = client.post("/api/inspect", json={"content": large_payload, "explain": False})
+    assert r.status_code == 200
+    assert "verdict" in r.json()
+
+
 def test_stats_requires_auth(client):
     assert client.get("/api/stats").status_code == 401
     hdr = _auth(client)

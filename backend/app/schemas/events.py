@@ -59,7 +59,7 @@ class GuardianEvent(BaseModel):
 
 
 class InspectRequest(BaseModel):
-    content: str = Field(min_length=0, max_length=20000)
+    content: str = Field(min_length=0, max_length=500_000)
     direction: Direction = "inbound"
     source: str = "user:anonymous"
     target: str = "agent:default"
