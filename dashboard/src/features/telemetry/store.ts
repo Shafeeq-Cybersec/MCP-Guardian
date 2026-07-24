@@ -20,6 +20,14 @@ import {
   seedAgents,
   seedIncidents,
 } from "./mock-stream";
+import {
+  fetchStats,
+  fetchEvents,
+  fetchHealth,
+  buildTrafficSeries,
+  healthToComponents,
+} from "@/lib/api/guardian";
+import { ApiError } from "@/lib/api/client";
 
 const EVENT_CAP = 250;
 
@@ -44,7 +52,12 @@ interface TelemetryState {
     latencySum: number;
     riskSum: number;
   };
-  hydrate: () => void;
+  // hydrateMock — always-available fallback used in demo mode.
+  hydrateMock: () => void;
+  // hydrateFromApi — fetches real data from the backend; falls back to mock on error.
+  hydrateFromApi: () => Promise<void>;
+  // refreshStats — lightweight poll of /api/stats to keep KPIs current.
+  refreshStats: () => Promise<void>;
   ingest: (event: GuardianEvent) => void;
   setConnection: (c: ConnectionStatus) => void;
 }
@@ -84,14 +97,14 @@ export const useTelemetry = create<TelemetryState>((set, get) => ({
     riskSum: 0,
   },
 
-  hydrate: () => {
-    if (get().events.length) return; // already hydrated
+  // ─── Demo / offline fallback ────────────────────────────────────────────
+  hydrateMock: () => {
+    if (get().events.length) return;
     const events = seedEvents(40);
     const traffic = seedTrafficSeries(24);
     const servers = seedServers();
     const agents = seedAgents();
 
-    // Build seed totals from the traffic history so the KPIs read as "a real day".
     const base = traffic.reduce(
       (acc, p) => {
         acc.inspected += p.inspected;
@@ -103,7 +116,6 @@ export const useTelemetry = create<TelemetryState>((set, get) => ({
       },
       { inspected: 0, blocked: 0, quarantined: 0, sanitized: 0, allowed: 0 },
     );
-
     const totals = {
       ...base,
       threatsToday: base.blocked + base.quarantined,
@@ -119,10 +131,106 @@ export const useTelemetry = create<TelemetryState>((set, get) => ({
       health: seedSystemHealth(),
       incidents: seedIncidents(),
       totals,
-      stats: computeStats(totals, agents, servers),
+      stats: statsFromTotals(totals, agents, servers),
     });
   },
 
+  // ─── Live API hydration ─────────────────────────────────────────────────
+  hydrateFromApi: async () => {
+    try {
+      // Fetch stats, events, and health in parallel.
+      const [apiStats, apiEvents, apiHealth] = await Promise.all([
+        fetchStats(),
+        fetchEvents(250),
+        fetchHealth(),
+      ]);
+
+      const traffic = buildTrafficSeries(apiEvents);
+      const health = healthToComponents(apiHealth);
+
+      // Build incidents from real high-risk events (riskScore ≥ 75).
+      const incidents: Incident[] = apiEvents
+        .filter((e) => e.riskScore >= 75 && e.category !== "benign")
+        .slice(0, 40)
+        .map((e) => ({
+          id: `inc_${e.id}`,
+          title: INCIDENT_TITLES[e.category] ?? "Threat detected",
+          category: e.category,
+          severity: e.severity,
+          verdict: e.verdict,
+          status: "open" as const,
+          timestamp: e.timestamp,
+          source: e.source,
+          affected: [e.target, e.tool].filter(Boolean) as string[],
+          riskScore: e.riskScore,
+        }));
+
+      // Derive in-memory totals from the authoritative /api/stats so the
+      // ingest() delta calculations stay consistent.
+      const totals = {
+        inspected: apiStats.inspected,
+        blocked: apiStats.blocked,
+        quarantined: apiStats.quarantined,
+        sanitized: apiStats.sanitized,
+        allowed:
+          apiStats.inspected -
+          apiStats.blocked -
+          apiStats.quarantined -
+          apiStats.sanitized,
+        threatsToday: apiStats.threatsToday,
+        latencySum: apiStats.avgLatencyMs * Math.max(apiStats.inspected, 1),
+        riskSum: apiStats.avgRiskScore * Math.max(apiStats.inspected, 1),
+      };
+
+      set({
+        events: apiEvents,
+        traffic,
+        health,
+        // Servers and agents have no real backend endpoint yet — keep mocks
+        // so those panels aren't blank.
+        servers: get().servers.length ? get().servers : seedServers(),
+        agents: get().agents.length ? get().agents : seedAgents(),
+        incidents,
+        totals,
+        stats: apiStats,
+      });
+    } catch (err) {
+      // Backend unreachable — fall back to mock data silently.
+      if (err instanceof ApiError && (err.status === 0 || err.status === 408)) {
+        get().hydrateMock();
+      }
+      // Auth / server errors: leave state empty; the page will show zeros.
+    }
+  },
+
+  // ─── Lightweight stats refresh (called on a 30s poll) ───────────────────
+  refreshStats: async () => {
+    try {
+      const apiStats = await fetchStats();
+      // Update KPI stats directly from the authoritative counter, also
+      // realign the totals accumulator so subsequent ingest() calls are
+      // consistent with the server's view.
+      const totals = {
+        inspected: apiStats.inspected,
+        blocked: apiStats.blocked,
+        quarantined: apiStats.quarantined,
+        sanitized: apiStats.sanitized,
+        allowed:
+          apiStats.inspected -
+          apiStats.blocked -
+          apiStats.quarantined -
+          apiStats.sanitized,
+        threatsToday: apiStats.threatsToday,
+        latencySum: apiStats.avgLatencyMs * Math.max(apiStats.inspected, 1),
+        riskSum: apiStats.avgRiskScore * Math.max(apiStats.inspected, 1),
+      };
+      set({ stats: apiStats, totals });
+    } catch {
+      // Silently skip — stale stats are better than a crash.
+    }
+  },
+
+  // ─── Live event ingestion (WS stream or demo simulator) ─────────────────
   ingest: (event) => {
     const s = get();
     const events = [event, ...s.events].slice(0, EVENT_CAP);
@@ -137,7 +245,7 @@ export const useTelemetry = create<TelemetryState>((set, get) => ({
     else totals.allowed += 1;
     if (event.category !== "benign") totals.threatsToday += 1;
 
-    // Roll the latest traffic bucket forward.
+    // Roll the current-hour traffic bucket forward.
     const traffic = [...s.traffic];
     if (traffic.length) {
       const last = { ...traffic[traffic.length - 1] };
@@ -149,13 +257,13 @@ export const useTelemetry = create<TelemetryState>((set, get) => ({
       traffic[traffic.length - 1] = last;
     }
 
-    // Promote high-risk events into incidents (dedup by rough title).
+    // Promote high-risk events into incidents.
     let incidents = s.incidents;
-    if (event.riskScore >= 75 && Math.random() < 0.5) {
+    if (event.riskScore >= 75 && event.category !== "benign") {
       incidents = [
         {
           id: `inc_${event.id}`,
-          title: incidentTitle(event.category),
+          title: INCIDENT_TITLES[event.category] ?? "Threat detected",
           category: event.category,
           severity: event.severity,
           verdict: event.verdict,
@@ -174,34 +282,36 @@ export const useTelemetry = create<TelemetryState>((set, get) => ({
       totals,
       traffic,
       incidents,
-      stats: computeStats(totals, s.agents, s.servers),
+      stats: statsFromTotals(totals, s.agents, s.servers),
     });
   },
 
   setConnection: (connection) => set({ connection }),
 }));
 
-function computeStats(
+// ─── Internal helpers ──────────────────────────────────────────────────────
+
+function statsFromTotals(
   totals: TelemetryState["totals"],
   agents: ConnectedAgent[],
   servers: McpServer[],
 ): DashboardStats {
-  const inspected = totals.inspected || 1;
+  const n = totals.inspected || 1;
   return {
     inspected: totals.inspected,
     blocked: totals.blocked,
     quarantined: totals.quarantined,
     sanitized: totals.sanitized,
     threatsToday: totals.threatsToday,
-    avgRiskScore: Math.round((totals.riskSum / inspected) * 10) / 10,
-    avgLatencyMs: Math.round((totals.latencySum / inspected) * 10) / 10,
+    avgRiskScore: Math.round((totals.riskSum / n) * 10) / 10,
+    avgLatencyMs: Math.round((totals.latencySum / n) * 10) / 10,
     activeAgents: agents.filter((a) => a.status === "active").length,
     connectedServers: servers.filter((s) => s.status === "connected").length,
-    blockRate: Math.round((totals.blocked / inspected) * 1000) / 10,
+    blockRate: Math.round((totals.blocked / n) * 1000) / 10,
   };
 }
 
-const TITLES: Record<ThreatCategory, string> = {
+const INCIDENT_TITLES: Record<ThreatCategory, string> = {
   prompt_injection: "Prompt injection attempt blocked",
   tool_poisoning: "Poisoned tool payload intercepted",
   pii_leakage: "Outbound PII leak prevented",
@@ -211,11 +321,9 @@ const TITLES: Record<ThreatCategory, string> = {
   schema_anomaly: "Schema anomaly rejected",
   benign: "Anomalous benign spike",
 };
-function incidentTitle(c: ThreatCategory) {
-  return TITLES[c];
-}
 
-/** Selectors */
+// ─── Selectors ─────────────────────────────────────────────────────────────
+
 export function selectCategoryBreakdown(events: GuardianEvent[]) {
   const map = new Map<ThreatCategory, number>();
   for (const e of events) {
@@ -229,4 +337,50 @@ export function selectVerdictBreakdown(events: GuardianEvent[]) {
   const map = new Map<Verdict, number>();
   for (const e of events) map.set(e.verdict, (map.get(e.verdict) ?? 0) + 1);
   return map;
+}
+
+/**
+ * Compute the percentage change between the most recent half of the traffic
+ * series and the preceding half.  Used by the overview page to replace the
+ * hardcoded delta values with real numbers.
+ *
+ * Returns null when there is insufficient data (< 4 buckets).
+ */
+export function selectTrafficDeltas(
+  traffic: MetricPoint[],
+): {
+  inspectedDelta: number | null;
+  blockedDelta: number | null;
+  quarantinedDelta: number | null;
+  riskDelta: number | null;
+} {
+  if (traffic.length < 4) {
+    return { inspectedDelta: null, blockedDelta: null, quarantinedDelta: null, riskDelta: null };
+  }
+
+  const mid = Math.floor(traffic.length / 2);
+  const prev = traffic.slice(0, mid);
+  const curr = traffic.slice(mid);
+
+  const sum = (pts: MetricPoint[], key: keyof MetricPoint) =>
+    pts.reduce((a, p) => a + (p[key] as number), 0);
+
+  const pct = (cur: number, old: number): number | null => {
+    if (old === 0) return null;
+    return Math.round(((cur - old) / old) * 1000) / 10;
+  };
+
+  const prevInspected = sum(prev, "inspected");
+  const currInspected = sum(curr, "inspected");
+  const prevBlocked = sum(prev, "blocked");
+  const currBlocked = sum(curr, "blocked");
+  const prevQuarantined = sum(prev, "quarantined");
+  const currQuarantined = sum(curr, "quarantined");
+
+  return {
+    inspectedDelta: pct(currInspected, prevInspected),
+    blockedDelta: pct(currBlocked, prevBlocked),
+    quarantinedDelta: pct(currQuarantined, prevQuarantined),
+    riskDelta: null, // avgRiskScore is a mean, not a sum — can't compute from MetricPoint
+  };
 }
