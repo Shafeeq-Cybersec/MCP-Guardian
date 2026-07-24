@@ -7,7 +7,6 @@ Also maintains rolling aggregate counters for the dashboard KPIs so the
 from __future__ import annotations
 
 import asyncio
-import json
 from collections import deque
 
 from app.core.config import settings
@@ -29,9 +28,11 @@ class EventStore:
             "risk_sum": 0.0,
             "latency_sum": 0.0,
         }
-        # live inventory (populated by the simulator / integrations)
-        self.active_agents = 5
-        self.connected_servers = 4
+        # Distinct sources/tools seen in the event buffer — used to compute
+        # activeAgents and connectedServers from real traffic instead of
+        # hardcoded constants.
+        self._seen_sources: set[str] = set()
+        self._seen_tools: set[str] = set()
 
     async def connect(self) -> None:
         if not settings.redis_url:
@@ -66,6 +67,12 @@ class EventStore:
             if event.category.value != "benign":
                 c["threats"] += 1
 
+            # Track distinct agent sources and tools for live inventory.
+            if event.source:
+                self._seen_sources.add(event.source)
+            if event.tool:
+                self._seen_tools.add(event.tool)
+
         if self._redis is not None:
             try:
                 await self._redis.lpush("guardian:events", event.model_dump_json())
@@ -78,33 +85,28 @@ class EventStore:
             return list(self._events)[:limit]
 
     async def stats(self) -> StatsResponse:
-        c = self._counters
-        inspected = max(c["inspected"], 1)
-        return StatsResponse(
-            inspected=c["inspected"],
-            blocked=c["blocked"],
-            quarantined=c["quarantined"],
-            sanitized=c["sanitized"],
-            threatsToday=c["threats"],
-            avgRiskScore=round(c["risk_sum"] / inspected, 1),
-            avgLatencyMs=round(c["latency_sum"] / inspected, 1),
-            activeAgents=self.active_agents,
-            connectedServers=self.connected_servers,
-            blockRate=round(c["blocked"] / inspected * 100, 1),
-        )
+        async with self._lock:
+            c = self._counters
+            inspected = max(c["inspected"], 1)
+            # activeAgents: distinct sources that have sent traffic.
+            # connectedServers: distinct tool names that have been called.
+            # Both are at least 1 when any traffic has flowed.
+            active_agents = max(len(self._seen_sources), 1 if c["inspected"] > 0 else 0)
+            connected_servers = max(len(self._seen_tools), 1 if c["inspected"] > 0 else 0)
+            return StatsResponse(
+                inspected=c["inspected"],
+                blocked=c["blocked"],
+                quarantined=c["quarantined"],
+                sanitized=c["sanitized"],
+                threatsToday=c["threats"],
+                avgRiskScore=round(c["risk_sum"] / inspected, 1),
+                avgLatencyMs=round(c["latency_sum"] / inspected, 1),
+                activeAgents=active_agents,
+                connectedServers=connected_servers,
+                blockRate=round(c["blocked"] / inspected * 100, 1),
+            )
 
-    def seed_counters(self, inspected: int, blocked: int, quarantined: int, sanitized: int) -> None:
-        """Pre-load plausible totals so a fresh boot reads like an active day."""
-        self._counters.update(
-            inspected=inspected,
-            blocked=blocked,
-            quarantined=quarantined,
-            sanitized=sanitized,
-            allowed=inspected - blocked - quarantined - sanitized,
-            threats=blocked + quarantined,
-            risk_sum=inspected * 11.0,
-            latency_sum=inspected * 17.0,
-        )
-
-
-store = EventStore()
+    async def inventory(self) -> tuple[list[str], list[str]]:
+        """Return (sources, tools) seen so far — used by the health endpoint."""
+        async with self._lock:
+            return list(self._seen_sources), list(self._seen_tools)
