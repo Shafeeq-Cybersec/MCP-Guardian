@@ -17,10 +17,12 @@ from app.services.event_store import store
 from app.services.simulator import _random_request, simulator
 
 
-async def _seed_history() -> None:
-    """Populate a plausible recent history so the dashboard opens 'alive'."""
-    store.seed_counters(inspected=8420, blocked=118, quarantined=64, sanitized=203)
-    for _ in range(36):
+async def _warm_up() -> None:
+    """Run a small burst of real inspections at startup so the event buffer
+    and traffic chart have something to show immediately.  All events are
+    genuinely processed by the detection pipeline — no counters are pre-loaded
+    with fake numbers."""
+    for _ in range(20):
         try:
             event = await engine.inspect_to_event(_random_request())
             await store.add(event)
@@ -31,7 +33,7 @@ async def _seed_history() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await store.connect()
-    await _seed_history()
+    await _warm_up()
     simulator.start()
     yield
     await simulator.stop()
