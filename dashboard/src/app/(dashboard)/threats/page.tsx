@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { useTelemetry } from "@/features/telemetry/store";
 import { CATEGORIES, VERDICTS } from "@/lib/constants";
 import type { GuardianEvent, ThreatCategory, Verdict } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, createListKey } from "@/lib/utils";
 
 export default function ThreatsPage() {
   return (
@@ -136,11 +136,11 @@ function ThreatsInner() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((e) => {
+                {filtered.map((e, index) => {
                   const cat = CATEGORIES[e.category];
                   return (
                     <tr
-                      key={e.id}
+                      key={createListKey(e, index)}
                       onClick={() => setSelected(e)}
                       className="cursor-pointer border-b border-border/60 transition-colors hover:bg-surface/40"
                     >

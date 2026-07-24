@@ -14,8 +14,6 @@ export const WS_URL =
   API_BASE_URL.replace(/^http/, "ws") + "/ws/stream";
 
 /** When true, the UI uses the built-in simulator/local analyzer instead of the API. */
-export const DEMO_MODE =
-  process.env.NEXT_PUBLIC_DEMO_MODE === "true" ||
-  process.env.NEXT_PUBLIC_API_URL === undefined;
+export const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
 
 export const TOKEN_STORAGE_KEY = "mcpg.session";

@@ -6,10 +6,15 @@ import { generateEvent } from "./mock-stream";
 import { DEMO_MODE, WS_URL } from "@/lib/api/config";
 import type { GuardianEvent } from "@/lib/types";
 
+function getTelemetrySeeded() {
+  return typeof window !== "undefined" && window.sessionStorage.getItem("mcg-telemetry-seeded") === "1";
+}
+
 /**
- * Drives the live telemetry. In demo mode it runs the in-browser simulator with
- * a naturally jittered cadence. When a backend is configured it connects to the
- * WebSocket stream and falls back to the simulator if the socket fails.
+ * Drives the live telemetry. In explicit demo mode it runs the in-browser
+ * simulator with a naturally jittered cadence. Otherwise it connects to the
+ * live backend WebSocket and stays in live/offline mode instead of falling back
+ * to mocked events.
  */
 export function TelemetryProvider({ children }: { children: React.ReactNode }) {
   const hydrate = useTelemetry((s) => s.hydrate);
@@ -17,13 +22,19 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
   const setConnection = useTelemetry((s) => s.setConnection);
 
   React.useEffect(() => {
-    hydrate();
     let stopped = false;
-    let timer: ReturnType<typeof setTimeout>;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     let ws: WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const clearTimers = () => {
+      if (timer) clearTimeout(timer);
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+    };
 
     const runSimulator = () => {
       setConnection("demo");
+      if (!getTelemetrySeeded()) hydrate();
       const tick = () => {
         if (stopped) return;
         // burst occasionally to feel like real traffic
@@ -34,16 +45,16 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
       tick();
     };
 
-    if (DEMO_MODE) {
-      runSimulator();
-    } else {
+    const connectLiveStream = () => {
+      if (stopped) return;
       setConnection("connecting");
+
       try {
         ws = new WebSocket(WS_URL);
         const connectTimeout = setTimeout(() => {
           if (ws && ws.readyState !== WebSocket.OPEN) {
             ws.close();
-            runSimulator();
+            setConnection("offline");
           }
         }, 3000);
 
@@ -61,19 +72,34 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
         };
         ws.onerror = () => {
           clearTimeout(connectTimeout);
+          setConnection("offline");
         };
         ws.onclose = () => {
-          if (!stopped) runSimulator();
+          if (!stopped) {
+            setConnection("offline");
+            reconnectTimer = setTimeout(connectLiveStream, 2000);
+          }
         };
       } catch {
-        runSimulator();
+        setConnection("offline");
+        reconnectTimer = setTimeout(connectLiveStream, 2000);
       }
+    };
+
+    if (DEMO_MODE) {
+      hydrate();
+      runSimulator();
+    } else {
+      connectLiveStream();
     }
 
     return () => {
       stopped = true;
-      clearTimeout(timer);
+      clearTimers();
       if (ws) {
+        ws.onopen = null;
+        ws.onmessage = null;
+        ws.onerror = null;
         ws.onclose = null;
         ws.close();
       }
