@@ -14,6 +14,14 @@ Panimalar Engineering College — Cyber Security (Software Track)
 
 ---
 
+## 🌟 Visual Overview
+
+| Overview Dashboard | Attack Propagation Graph |
+|---|---|
+| ![SOC Overview Dashboard](./docs/screenshots/05-overview-dashboard.jpeg) | ![Attack Propagation Graph](./docs/screenshots/09-attack-propagation-graph.jpeg) |
+
+---
+
 ## Problem Statement
 
 AI agents are no longer just chatbots. They now connect to files, databases, and outside tools using a standard called the Model Context Protocol (MCP), and that opens up two weak spots.
@@ -36,6 +44,57 @@ Every message resolves to one of four verdicts:
 | `SANITIZE` | Threat removed, safe content forwarded |
 | `QUARANTINE` | Message held for review |
 | `BLOCK` | Message rejected, agent notified |
+
+---
+
+## 📸 Interactive Tour & Screen Demonstrations
+
+### 1. AI Chat & Real-Time Firewall Inspection
+
+Guardian sits inline during active chat sessions, intercepting prompts, tool parameters, and tool response payloads before they reach the model.
+
+| Screenshot | Description |
+|------------|-------------|
+| ![AI Chat Quarantine Verdict](./docs/screenshots/01-ai-chat-quarantine.jpeg) | **Real-Time Quarantine Interception**<br>When reading `vendor-config.txt`, Guardian inspects the response payload, detects an encoded obfuscated payload, calculates a risk score of 50, and issues a **QUARANTINE** verdict to isolate the threat. |
+| ![AI Chat Allow Verdict](./docs/screenshots/02-ai-chat-allow.jpeg) | **Clean Operational Traffic (ALLOW)**<br>A benign query (`"What files can you access?"`) passes through all 7 detectors with zero risk score, resolving to **ALLOW** and permitting normal execution. |
+| ![AI Chat File Inspection](./docs/screenshots/03-ai-chat-file-inspection.jpeg) | **Poisoned File Response Interception**<br>Inspecting uploaded files (`poisoned_report.txt`). Guardian intercepts hidden directives before the LLM processes them, preventing indirect prompt injection. |
+| ![Sanitized Threat Evidence Breakdown](./docs/screenshots/04-evidence-breakdown.jpeg) | **Granular Evidence & Recommended Action**<br>Detailed view of quarantined threats showing exact lines, payload types, sanitized safe previews, and actionable mitigation guidance. |
+
+---
+
+### 2. Security Operations Center (SOC) & Live Monitoring
+
+The SOC Dashboard gives security teams real-time visibility into traffic, active threats, and latency.
+
+| Screenshot | Description |
+|------------|-------------|
+| ![SOC Overview Dashboard](./docs/screenshots/05-overview-dashboard.jpeg) | **SOC Overview Dashboard**<br>Displays real-time metrics including total messages inspected (50), threats blocked (19), quarantined items (4), average risk score (38), live traffic charts, and verdict distribution breakdown. |
+| ![Live Event Feed & Monitoring](./docs/screenshots/06-live-monitoring.jpeg) | **Live Event Feed & Threat Pressure**<br>High-speed telemetry feed monitoring inbound/outbound messages, per-hour throughput histograms, average latency (0.2ms), and real-time threat pressure gauges. |
+| ![Threat Detection Grid](./docs/screenshots/07-threat-detection-table.jpeg) | **Real-Time Threat Detection Table**<br>Categorizes and scores non-benign events (Prompt Injection, Toxicity, Poisoning, PII) across agent-to-tool communications. |
+
+---
+
+### 3. Threat Forensics & Attack Path Analysis
+
+Comprehensive forensic tools enable security analysts to trace multi-agent attack propagation and inspect raw logs.
+
+| Screenshot | Description |
+|------------|-------------|
+| ![Attack Timeline](./docs/screenshots/08-attack-timeline.jpeg) | **Attack Timeline**<br>A chronological thread documenting every intercepted threat with risk severity tags (Critical/High), risk scores, and detailed agent interaction trails. |
+| ![Attack Propagation Graph](./docs/screenshots/09-attack-propagation-graph.jpeg) | **Attack Propagation Graph**<br>Visualizes flow paths between Users/API Clients, AI Agents (`orchestrator`, `support-copilot`, `research-agent`), Guardian Inline Firewall, and connected MCP Tools (`filesystem-mcp`, `vault-mcp`, `github-mcp`). |
+| ![Audit Logs](./docs/screenshots/10-audit-logs.jpeg) | **Full Audit Logs**<br>Filterable audit trail detailing message IDs, timestamps, directions (IN/OUT), categories, source-target pairs, verdicts, risk scores, sub-millisecond latencies, and CSV export capabilities. |
+
+---
+
+### 4. Security Analytics, Reporting & Configuration
+
+Deep reporting and configurable security controls tailor Guardian to enterprise requirements.
+
+| Screenshot | Description |
+|------------|-------------|
+| ![Executive Security Reports](./docs/screenshots/11-executive-reports.jpeg) | **Executive Security Reports**<br>Generate downloadable security reports (PDF, CSV, JSON) featuring threat category pie charts (Prompt Injection 56%, Toxicity 21%, Policy 10%, Tool Poisoning 8%) and severity distributions. |
+| ![Deep Analytics Dashboard](./docs/screenshots/12-analytics-dashboard.jpeg) | **Deep Analytics Dashboard**<br>Tracks hourly risk score trends, verdict throughput, and detector engine performance metrics (Injection 43, Toxicity 15, Policy 8, PII 7, Poisoning 6). |
+| ![Settings & Risk Thresholds](./docs/screenshots/13-settings-and-thresholds.jpeg) | **Settings & Threshold Tuning**<br>Customizable verdict thresholds (Sanitize at 25, Quarantine at 50, Block at 75) and toggles for individual detection modules (Prompt Injection, Tool Poisoning, PII, Toxicity, Encoded Payload, Schema Anomaly). |
 
 ---
 
@@ -105,6 +164,8 @@ MCP-Guardian/
 │       ├── components/         # ui · marketing · dashboard · motion · brand
 │       ├── features/           # auth · telemetry · detection
 │       └── lib/                # api client, tokens, types, utils
+├── docs/                       # Project documentation & screenshots
+│   └── screenshots/            # 13 high-res UI & feature demonstration screenshots
 ├── mcp-servers/
 │   └── filesystem/             # Sandboxed MCP server (stdio, isolated venv)
 ├── sandbox/                    # Files exposed to the MCP server for demos
@@ -380,4 +441,4 @@ LLM escalation fires only on ambiguous messages; clean and obvious-threat messag
 
 ✅ **Fully implemented and tested.**
 
-Built for RUSH HOUR 24 — Sathyabama Institute of Science and Technology.
+Built for RUSH HOUR 24 — Panimalar Engineering College.
