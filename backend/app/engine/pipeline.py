@@ -140,7 +140,7 @@ class GuardianEngine:
         """Inspect and shape the result as a dashboard `GuardianEvent`."""
         res = await self.inspect(req)
         preview = res.sanitized if res.sanitized else req.content
-        return GuardianEvent(
+        event = GuardianEvent(
             id=f"evt_{uuid.uuid4().hex[:10]}",
             timestamp=datetime.now(timezone.utc).isoformat(),
             direction=req.direction,
@@ -158,6 +158,12 @@ class GuardianEngine:
             preview=preview[:280],
             llmReasoned=res.llmReasoned,
         )
+        try:
+            from app.engine.correlation import correlator
+            await correlator.ingest_event(event)
+        except Exception:  # noqa: BLE001
+            pass
+        return event
 
 
 # module-level singleton

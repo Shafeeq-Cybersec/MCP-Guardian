@@ -174,3 +174,71 @@ export function healthToComponents(h: SystemHealthResponse): SystemHealthCompone
 
   return components;
 }
+
+// ── Attack Chains (RH-0045 Challenge Feature) ─────────────────────────────
+
+export interface AttackChainHop {
+  step: number;
+  timestamp: string;
+  tool: string;
+  source: string;
+  target: string;
+  category: string;
+  verdict: string;
+  riskScore: number;
+  summary: string;
+}
+
+export interface AttackChainNode {
+  id: string;
+  label: string;
+  sub: string;
+  kind: "user" | "agent" | "guardian" | "tool";
+  risk: "clean" | "warning" | "danger";
+  x?: number;
+  y?: number;
+}
+
+export interface AttackChainEdge {
+  from: string;
+  to: string;
+  threat?: boolean;
+  label?: string;
+}
+
+export interface AttackChainData {
+  id: string;
+  title: string;
+  sessionId: string;
+  patternType: string;
+  riskScore: number;
+  confidence: number;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  hops: AttackChainHop[];
+  nodes: AttackChainNode[];
+  edges: AttackChainEdge[];
+}
+
+export interface AttackChainsResponse {
+  challenge: {
+    teamName: string;
+    teamId: string;
+    feature: string;
+    status: string;
+  };
+  totalChains: number;
+  chains: AttackChainData[];
+}
+
+export async function fetchAttackChains(): Promise<AttackChainsResponse> {
+  return apiRequest<AttackChainsResponse>("/api/attack-chains");
+}
+
+export async function simulateAttackChain(): Promise<{ status: string; message: string; chain: AttackChainData }> {
+  return apiRequest<{ status: string; message: string; chain: AttackChainData }>("/api/attack-chains/simulate", {
+    method: "POST",
+  });
+}
+

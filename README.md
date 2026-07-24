@@ -47,6 +47,37 @@ Every message resolves to one of four verdicts:
 
 ---
 
+## ⚡ RUSH HOUR Hackathon Challenge — Assigned Feature & Produced Solution
+
+> **Team Name:** Mutex  
+> **Team ID:** RH-0045  
+> **Evaluation Phase:** Post-Evaluation Judge Challenge Integration  
+
+### 🔒 Challenge Statement (Task Locker)
+```text
+Multi-Tool Attack Chain Detection Engine: Correlate suspicious activities across multiple AI tool calls and sessions to detect coordinated prompt-injection and data-exfiltration attacks that single-request analysis cannot identify.
+```
+
+### 💡 Produced Solution: Stateful Multi-Tool Correlation Engine & Live Graph
+
+Single-request firewalls inspect requests in isolation and miss multi-hop payloads. For example:
+1. **Hop 1 (`read_document` via `filesystem-mcp`):** Agent reads a document containing hidden base64 instructions (*QUARANTINE / Risk: 50.0*).
+2. **Hop 2 (`vault_read` via `vault-mcp`):** Injected instructions cause agent to attempt database credential retrieval (*BLOCK / Risk: 92.9*).
+3. **Hop 3 (`send_notification` via `webhook-gateway`):** Agent attempts to send retrieved secrets out of the security perimeter (*BLOCK / Risk: 98.0*).
+
+#### Technical Architecture:
+* **Correlation Engine (`backend/app/engine/correlation.py`):** Stateful correlation manager tracking sliding session windows (600s). Evaluates sequence counts, tool diversity, threat category escalation, and risk amplification.
+* **REST & Real-Time WebSocket API (`backend/app/api/attack_chains.py`):** 
+  - `GET /api/attack-chains`: Retrieve all correlated attack chains.
+  - `POST /api/attack-chains/simulate`: Trigger live 3-hop attack chain simulation for demonstration.
+  - `WS /ws/chains`: Real-time WebSocket event stream pushing attack chains directly to connected frontend clients.
+* **Live Interactive Graph UI (`dashboard/src/app/(dashboard)/graph/page.tsx`):**
+  - **Dynamic Topology Layout:** Visualizes nodes (`User / Client`, `AI Agent`, `Guardian Firewall`, `MCP Tools`).
+  - **Animated Edge Flow:** Interactive SVG Bezier curves with directional pulsing flow lines indicating threat levels (Red for threat paths, Cyan for clean paths).
+  - **Hop-by-Hop Attack Breakdown:** Sequential step timeline detailing tool names, source-to-target routes, verdicts, risk scores, and payload explanations.
+
+---
+
 ## 📸 Interactive Tour & Screen Demonstrations
 
 ### 1. AI Chat & Real-Time Firewall Inspection
@@ -178,7 +209,7 @@ flowchart TD
     D1 & D2 & D3 & D4 & D5 & D6 & D7 --> AGG
     AGG --> DECISION
 
-    DECISION -->|Yes (<2ms)| VERDICT
+    DECISION -->|"Yes (&lt; 2ms)"| VERDICT
     DECISION -->|No / Ambiguous| LLM
     LLM --> VERDICT
 
