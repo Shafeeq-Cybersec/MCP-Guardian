@@ -97,6 +97,19 @@ Deep reporting and configurable security controls tailor Guardian to enterprise 
 
 ---
 
+### 5. Document Inspection: Clean vs. Indirect Prompt Injection
+
+Side-by-side comparison of a clean document versus a document poisoned with an indirect prompt injection attack attempting to override system instructions and exfiltrate credentials.
+
+| Clean Document (`clean_report.txt`) | Poisoned Document with Indirect Injection (`poisoned_report.txt`) |
+|---|---|
+| ![Clean Operational Document](./docs/screenshots/sample-clean-report.jpeg) | ![Poisoned Document with Prompt Injection](./docs/screenshots/sample-poisoned-report.png) |
+
+- **Clean Document (`clean_report.txt`)**: Contains standard quarterly operational metrics. Passes all 7 detectors with zero risk score, resulting in an **ALLOW** verdict.
+- **Poisoned Document (`poisoned_report.txt`)**: Contains a hidden `[SYSTEM OVERRIDE]` prompt injection inside Section 3 instructing the AI to ignore security controls and dump API keys. Guardian intercepts the payload during tool execution and issues a **QUARANTINE / BLOCK** verdict.
+
+---
+
 ## 🏗️ Architecture
 
 ```mermaid
