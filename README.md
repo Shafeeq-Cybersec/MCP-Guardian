@@ -56,7 +56,6 @@ Guardian sits inline during active chat sessions, intercepting prompts, tool par
 | Screenshot | Description |
 |------------|-------------|
 | ![AI Chat Quarantine Verdict](./docs/screenshots/01-ai-chat-quarantine.jpeg) | **Real-Time Quarantine Interception**<br>When reading `vendor-config.txt`, Guardian inspects the response payload, detects an encoded obfuscated payload, calculates a risk score of 50, and issues a **QUARANTINE** verdict to isolate the threat. |
-| ![AI Chat Allow Verdict](./docs/screenshots/02-ai-chat-allow.jpeg) | **Clean Operational Traffic (ALLOW)**<br>A benign query (`"What files can you access?"`) passes through all 7 detectors with zero risk score, resolving to **ALLOW** and permitting normal execution. |
 | ![AI Chat File Inspection](./docs/screenshots/03-ai-chat-file-inspection.jpeg) | **Poisoned File Response Interception**<br>Inspecting uploaded files (`poisoned_report.txt`). Guardian intercepts hidden directives before the LLM processes them, preventing indirect prompt injection. |
 | ![Sanitized Threat Evidence Breakdown](./docs/screenshots/04-evidence-breakdown.jpeg) | **Granular Evidence & Recommended Action**<br>Detailed view of quarantined threats showing exact lines, payload types, sanitized safe previews, and actionable mitigation guidance. |
 
