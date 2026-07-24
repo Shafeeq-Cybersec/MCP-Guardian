@@ -90,8 +90,6 @@ export function LiveFeed({
 
   const shown = paused ? frozen : events.slice(0, max);
 
-<<<<<<< HEAD
-=======
   const getEventKey = React.useCallback((event: GuardianEvent, index: number) => {
     const base = [
       event.id,
@@ -109,7 +107,6 @@ export function LiveFeed({
     return `${base}::${index}`;
   }, []);
 
->>>>>>> origin/main
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
@@ -138,15 +135,9 @@ export function LiveFeed({
 
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         <AnimatePresence initial={false}>
-<<<<<<< HEAD
-          {shown.map((event) => (
-            <motion.div
-              key={event.id}
-=======
           {shown.map((event, index) => (
             <motion.div
               key={getEventKey(event, index)}
->>>>>>> origin/main
               layout
               initial={{ opacity: 0, y: -12, height: 0 }}
               animate={{ opacity: 1, y: 0, height: "auto" }}

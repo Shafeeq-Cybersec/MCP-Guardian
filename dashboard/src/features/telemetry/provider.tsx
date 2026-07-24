@@ -4,34 +4,6 @@ import * as React from "react";
 import { useTelemetry } from "./store";
 import { generateEvent } from "./mock-stream";
 import { DEMO_MODE, WS_URL } from "@/lib/api/config";
-<<<<<<< HEAD
-import type { GuardianEvent } from "@/lib/types";
-
-/**
- * Drives the live telemetry. In demo mode it runs the in-browser simulator with
- * a naturally jittered cadence. When a backend is configured it connects to the
- * WebSocket stream and falls back to the simulator if the socket fails.
- */
-export function TelemetryProvider({ children }: { children: React.ReactNode }) {
-  const hydrate = useTelemetry((s) => s.hydrate);
-  const ingest = useTelemetry((s) => s.ingest);
-  const setConnection = useTelemetry((s) => s.setConnection);
-
-  React.useEffect(() => {
-    hydrate();
-    let stopped = false;
-    let timer: ReturnType<typeof setTimeout>;
-    let ws: WebSocket | null = null;
-
-    const runSimulator = () => {
-      setConnection("demo");
-      const tick = () => {
-        if (stopped) return;
-        // burst occasionally to feel like real traffic
-        const burst = Math.random() < 0.15 ? 3 : 1;
-        for (let i = 0; i < burst; i++) ingest(generateEvent());
-        timer = setTimeout(tick, 700 + Math.random() * 1600);
-=======
 import { checkBackendHealth } from "@/lib/api/client";
 import type { GuardianEvent } from "@/lib/types";
 
@@ -104,25 +76,10 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
         const burst = Math.random() < 0.15 ? 3 : 1;
         for (let i = 0; i < burst; i++) ingest(generateEvent());
         simulatorTimer = setTimeout(tick, 700 + Math.random() * 1600);
->>>>>>> origin/main
       };
       tick();
     };
 
-<<<<<<< HEAD
-    if (DEMO_MODE) {
-      runSimulator();
-    } else {
-      setConnection("connecting");
-      try {
-        ws = new WebSocket(WS_URL);
-        const connectTimeout = setTimeout(() => {
-          if (ws && ws.readyState !== WebSocket.OPEN) {
-            ws.close();
-            runSimulator();
-          }
-        }, 3000);
-=======
     // ── REST-only fallback ─────────────────────────────────────────────────
     const runRestOnly = () => {
       if (stopped) return;
@@ -160,19 +117,14 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
             });
           }
         }, WS_CONNECT_TIMEOUT_MS);
->>>>>>> origin/main
 
         ws.onopen = () => {
           clearTimeout(connectTimeout);
           setConnection("live");
-<<<<<<< HEAD
-        };
-=======
           void hydrateFromApi();
           startStatsPoll(WS_STATS_POLL_MS);
         };
 
->>>>>>> origin/main
         ws.onmessage = (msg) => {
           try {
             const data = JSON.parse(msg.data) as GuardianEvent;
@@ -181,17 +133,6 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
             /* ignore malformed frames */
           }
         };
-<<<<<<< HEAD
-        ws.onerror = () => {
-          clearTimeout(connectTimeout);
-        };
-        ws.onclose = () => {
-          if (!stopped) runSimulator();
-        };
-      } catch {
-        runSimulator();
-      }
-=======
 
         ws.onerror = () => {
           clearTimeout(connectTimeout);
@@ -235,17 +176,10 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
       runSimulator();
     } else {
       connectLiveStream();
->>>>>>> origin/main
     }
 
     return () => {
       stopped = true;
-<<<<<<< HEAD
-      clearTimeout(timer);
-      if (ws) {
-        ws.onclose = null;
-        ws.close();
-=======
       if (simulatorTimer) clearTimeout(simulatorTimer);
       if (reconnectTimer) clearTimeout(reconnectTimer);
       stopPoll();
@@ -255,7 +189,6 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
         ws.onerror   = null;
         ws.onclose   = null;
         try { ws.close(); } catch { /* ignore */ }
->>>>>>> origin/main
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

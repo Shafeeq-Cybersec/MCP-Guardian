@@ -26,9 +26,6 @@ export function formatCompact(value: number) {
     maximumFractionDigits: 1,
   }).format(value);
 }
-<<<<<<< HEAD
-=======
-
 /** Build a stable React list key from a value and its position. */
 export function createListKey(value: unknown, index: number) {
   if (value === null || value === undefined) {
@@ -56,4 +53,3 @@ export function createListKey(value: unknown, index: number) {
 
   return `item-${index}`;
 }
->>>>>>> origin/main

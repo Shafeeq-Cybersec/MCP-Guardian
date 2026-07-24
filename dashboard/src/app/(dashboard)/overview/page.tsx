@@ -18,27 +18,13 @@ import { TrafficChart, VerdictBreakdown, CategoryDonut } from "@/components/dash
 import { LiveFeed } from "@/components/dashboard/live-feed";
 import { EventDetail } from "@/components/dashboard/event-detail";
 import { Button } from "@/components/ui/button";
-<<<<<<< HEAD
-import { useTelemetry } from "@/features/telemetry/store";
-=======
 import { useTelemetry, selectTrafficDeltas } from "@/features/telemetry/store";
->>>>>>> origin/main
 import { SEVERITY_META, CATEGORIES } from "@/lib/constants";
 import { formatCompact, formatNumber } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import type { GuardianEvent } from "@/lib/types";
 
 export default function OverviewPage() {
-<<<<<<< HEAD
-  const stats = useTelemetry((s) => s.stats);
-  const traffic = useTelemetry((s) => s.traffic);
-  const events = useTelemetry((s) => s.events);
-  const health = useTelemetry((s) => s.health);
-  const incidents = useTelemetry((s) => s.incidents);
-  const [selected, setSelected] = React.useState<GuardianEvent | null>(null);
-
-  const spark = traffic.slice(-10).map((p) => p.inspected);
-=======
   const stats     = useTelemetry((s) => s.stats);
   const traffic   = useTelemetry((s) => s.traffic);
   const events    = useTelemetry((s) => s.events);
@@ -69,7 +55,6 @@ export default function OverviewPage() {
   }, [events]);
 
   const spark      = traffic.slice(-10).map((p) => p.inspected);
->>>>>>> origin/main
   const blockSpark = traffic.slice(-10).map((p) => p.blocked);
 
   return (
@@ -95,11 +80,7 @@ export default function OverviewPage() {
           value={formatCompact(stats.inspected)}
           icon={ScanSearch}
           accent="primary"
-<<<<<<< HEAD
-          delta={{ value: 12.4 }}
-=======
           delta={inspectedDelta != null ? { value: inspectedDelta } : undefined}
->>>>>>> origin/main
           spark={spark}
         />
         <StatCard
@@ -108,11 +89,7 @@ export default function OverviewPage() {
           value={formatNumber(stats.blocked)}
           icon={ShieldX}
           accent="block"
-<<<<<<< HEAD
-          delta={{ value: 8.1, positiveIsGood: false }}
-=======
           delta={blockedDelta != null ? { value: blockedDelta, positiveIsGood: false } : undefined}
->>>>>>> origin/main
           spark={blockSpark}
         />
         <StatCard
@@ -121,11 +98,7 @@ export default function OverviewPage() {
           value={formatNumber(stats.quarantined)}
           icon={ShieldAlert}
           accent="quarantine"
-<<<<<<< HEAD
-          delta={{ value: 3.2, positiveIsGood: false }}
-=======
           delta={quarantinedDelta != null ? { value: quarantinedDelta, positiveIsGood: false } : undefined}
->>>>>>> origin/main
         />
         <StatCard
           index={3}
@@ -133,11 +106,7 @@ export default function OverviewPage() {
           value={stats.avgRiskScore}
           icon={Gauge}
           accent="sanitize"
-<<<<<<< HEAD
-          delta={{ value: 2.6, positiveIsGood: false }}
-=======
           delta={riskDelta != null ? { value: riskDelta, positiveIsGood: false } : undefined}
->>>>>>> origin/main
         />
       </div>
 
@@ -154,26 +123,15 @@ export default function OverviewPage() {
         <Panel title="Verdict distribution" description="Across recent traffic">
           <VerdictBreakdown events={events} />
           <div className="mt-5 grid grid-cols-2 gap-3 border-t border-border pt-4">
-<<<<<<< HEAD
-            <MiniStat icon={Bot} label="Active agents" value={stats.activeAgents} />
-            <MiniStat icon={Server} label="MCP servers" value={stats.connectedServers} />
-            <MiniStat icon={Activity} label="Avg latency" value={`${stats.avgLatencyMs}ms`} />
-            <MiniStat icon={ShieldX} label="Block rate" value={`${stats.blockRate}%`} />
-=======
             <MiniStat icon={Bot}      label="Active agents" value={stats.activeAgents} />
             <MiniStat icon={Server}   label="MCP servers"   value={stats.connectedServers} />
             <MiniStat icon={Activity} label="Avg latency"   value={`${stats.avgLatencyMs}ms`} />
             <MiniStat icon={ShieldX}  label="Block rate"    value={`${stats.blockRate}%`} />
->>>>>>> origin/main
           </div>
         </Panel>
       </div>
 
-<<<<<<< HEAD
-      {/* Feed + side */}
-=======
       {/* Feed + side panels */}
->>>>>>> origin/main
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2" contentClassName="p-0">
           <div className="h-[440px]">
@@ -187,7 +145,6 @@ export default function OverviewPage() {
           </Panel>
 
           <Panel title="System health" description="Detector & service status">
-<<<<<<< HEAD
             <div className="space-y-2.5">
               {health.map((c) => (
                 <div key={c.name} className="flex items-center gap-2.5">
@@ -195,59 +152,27 @@ export default function OverviewPage() {
                     className="size-3.5 shrink-0"
                     style={{
                       color:
-                        c.status === "operational"
+                        c.status === "healthy"
                           ? "var(--allow)"
                           : c.status === "degraded"
-                            ? "var(--sanitize)"
+                            ? "var(--quarantine)"
                             : "var(--block)",
                     }}
                   />
-                  <span className="flex-1 truncate text-sm text-foreground">{c.name}</span>
-                  <span className="font-mono text-xs text-subtle">{c.latencyMs}ms</span>
+                  <span className="min-w-0 flex-1 truncate text-xs text-foreground font-mono">{c.name}</span>
+                  <span className="font-mono text-[0.7rem] text-subtle">{c.latencyMs}ms</span>
                 </div>
               ))}
             </div>
-=======
-            {health.length === 0 ? (
-              <p className="text-xs text-subtle">Connecting…</p>
-            ) : (
-              <div className="space-y-2.5">
-                {health.map((c) => (
-                  <div key={c.name} className="flex items-center gap-2.5">
-                    <CircleDot
-                      className="size-3.5 shrink-0"
-                      style={{
-                        color:
-                          c.status === "operational"
-                            ? "var(--allow)"
-                            : c.status === "degraded"
-                              ? "var(--sanitize)"
-                              : "var(--block)",
-                      }}
-                    />
-                    <span className="flex-1 truncate text-sm text-foreground">{c.name}</span>
-                    {c.latencyMs > 0 && (
-                      <span className="font-mono text-xs text-subtle">{c.latencyMs}ms</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
->>>>>>> origin/main
           </Panel>
         </div>
       </div>
 
-      {/* Incidents */}
+      {/* Incidents panel */}
       <div className="mt-4">
         <Panel
-          title="Recent incidents"
-          description="High-risk events promoted for review"
-          action={
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/threats">View all</Link>
-            </Button>
-          }
+          title="Recent high-risk incidents"
+          description="Events that scored ≥ 75 and triggered security alerts"
           contentClassName="p-0"
         >
           {incidents.length === 0 ? (
@@ -260,20 +185,12 @@ export default function OverviewPage() {
             </div>
           ) : (
             <div className="divide-y divide-border">
-<<<<<<< HEAD
-              {incidents.slice(0, 5).map((inc) => {
-=======
               {incidents.slice(0, 5).map((inc, index) => {
->>>>>>> origin/main
                 const cat = CATEGORIES[inc.category];
                 const sev = SEVERITY_META[inc.severity];
                 return (
                   <div
-<<<<<<< HEAD
-                    key={inc.id}
-=======
                     key={`${inc.id}-${inc.timestamp}-${inc.title}-${index}`}
->>>>>>> origin/main
                     className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-surface/40"
                   >
                     <span
@@ -290,12 +207,8 @@ export default function OverviewPage() {
                         {inc.title}
                       </p>
                       <p className="font-mono text-[0.7rem] text-subtle">
-<<<<<<< HEAD
-                        {inc.source} · {formatDistanceToNow(new Date(inc.timestamp), { addSuffix: true })}
-=======
                         {inc.source} ·{" "}
                         {formatDistanceToNow(new Date(inc.timestamp), { addSuffix: true })}
->>>>>>> origin/main
                       </p>
                     </div>
                     <span

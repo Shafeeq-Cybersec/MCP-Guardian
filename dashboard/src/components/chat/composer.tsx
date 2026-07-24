@@ -56,12 +56,6 @@ export function Composer({
     if (!files) return;
     const next: Attachment[] = [];
     for (const f of Array.from(files).slice(0, 4)) {
-<<<<<<< HEAD
-      const isText = /\.(txt|md|json|ya?ml|csv|log|js|ts|py|html|css)$/i.test(f.name) || f.type.startsWith("text/");
-      let content: string | undefined;
-      if (isText && f.size <= MAX_ATTACH_BYTES) {
-        content = await f.text();
-=======
       // Attempt to read any file ≤ 32 KB as UTF-8 text so Guardian can
       // inspect its content regardless of extension (.pdf, .docx, etc.).
       // Truly binary files will produce garbled text, but demo/test payloads
@@ -76,7 +70,6 @@ export function Composer({
         } catch {
           content = undefined;
         }
->>>>>>> origin/main
       }
       next.push({ name: f.name, size: f.size, content });
     }
@@ -99,10 +92,11 @@ export function Composer({
                 className="flex items-center gap-1.5 rounded-lg border border-border bg-surface/60 py-1 pl-2 pr-1 text-xs text-muted"
               >
                 <Paperclip className="size-3" />
-                {a.name}
+                <span className="truncate max-w-[120px] font-mono">{a.name}</span>
                 <button
-                  onClick={() => setAttachments((prev) => prev.filter((_, idx) => idx !== i))}
-                  className="rounded p-0.5 hover:bg-surface hover:text-foreground"
+                  type="button"
+                  onClick={() => setAttachments((a) => a.filter((_, idx) => idx !== i))}
+                  className="rounded p-0.5 hover:text-foreground"
                 >
                   <X className="size-3" />
                 </button>
@@ -112,22 +106,7 @@ export function Composer({
         )}
       </AnimatePresence>
 
-      <div className="relative flex items-end gap-2 rounded-2xl border border-border bg-card/70 p-2 shadow-lg shadow-black/20 backdrop-blur-sm transition-colors focus-within:border-primary/40">
-        <button
-          onClick={() => fileRef.current?.click()}
-          className="flex size-9 shrink-0 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface hover:text-foreground"
-          aria-label="Attach file"
-        >
-          <Paperclip className="size-4.5" />
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          multiple
-          hidden
-          onChange={(e) => onFiles(e.target.files)}
-        />
-
+      <div className="relative flex items-end rounded-2xl border border-border/80 bg-surface/80 p-2 shadow-2xl backdrop-blur-md transition-colors focus-within:border-primary/50 focus-within:bg-surface">
         <textarea
           ref={taRef}
           value={value}
@@ -141,38 +120,51 @@ export function Composer({
               submit();
             }
           }}
+          placeholder="Ask the AI agent anything... (inbound prompts and tool calls are inspected live)"
           rows={1}
-          placeholder="Ask Guardian anything, or paste a suspicious payload…"
-          className="max-h-[200px] flex-1 resize-none bg-transparent py-1.5 text-[0.925rem] leading-relaxed text-foreground outline-none placeholder:text-subtle"
+          className="min-h-[44px] flex-1 resize-none bg-transparent px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:outline-none"
         />
 
-        {sending ? (
+        <input
+          ref={fileRef}
+          type="file"
+          multiple
+          onChange={(e) => onFiles(e.target.files)}
+          className="hidden"
+        />
+
+        <div className="flex items-center gap-1 p-1">
           <button
-            onClick={onStop}
-            className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface text-foreground transition-colors hover:bg-surface-hover"
-            aria-label="Stop"
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            title="Attach file (inspected)"
+            className="flex size-9 items-center justify-center rounded-xl text-muted transition-colors hover:bg-border/40 hover:text-foreground"
           >
-            <Square className="size-3.5 fill-current" />
+            <Paperclip className="size-4" />
           </button>
-        ) : (
-          <button
-            onClick={submit}
-            disabled={!value.trim() && attachments.length === 0}
-            className={cn(
-              "flex size-9 shrink-0 items-center justify-center rounded-xl transition-all",
-              value.trim() || attachments.length
-                ? "bg-primary text-white hover:bg-primary-bright"
-                : "bg-surface text-subtle",
-            )}
-            aria-label="Send"
-          >
-            <ArrowUp className="size-4.5" />
-          </button>
-        )}
+
+          {sending ? (
+            <button
+              type="button"
+              onClick={onStop}
+              title="Stop generation"
+              className="flex size-9 items-center justify-center rounded-xl bg-accent-rose text-white transition-opacity hover:opacity-90"
+            >
+              <Square className="size-3.5 fill-current" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={submit}
+              disabled={!value.trim() && attachments.length === 0}
+              title="Send prompt"
+              className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-30"
+            >
+              <ArrowUp className="size-4" />
+            </button>
+          )}
+        </div>
       </div>
-      <p className="mt-2 text-center text-[0.7rem] text-subtle">
-        Every message and tool response is inspected by Guardian in real time.
-      </p>
     </div>
   );
 }

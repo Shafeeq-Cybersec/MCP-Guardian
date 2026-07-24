@@ -17,11 +17,7 @@ import {
 import { useTelemetry } from "@/features/telemetry/store";
 import { CATEGORIES } from "@/lib/constants";
 import { exportEventsCSV } from "@/lib/export";
-<<<<<<< HEAD
-import { cn } from "@/lib/utils";
-=======
 import { cn, createListKey } from "@/lib/utils";
->>>>>>> origin/main
 import type { GuardianEvent } from "@/lib/types";
 import { toast } from "sonner";
 
@@ -123,19 +119,11 @@ export default function LogsPage() {
                 </tr>
               </thead>
               <tbody className="font-mono">
-<<<<<<< HEAD
-                {filtered.map((e) => {
-                  const cat = CATEGORIES[e.category];
-                  return (
-                    <tr
-                      key={e.id}
-=======
                 {filtered.map((e, index) => {
                   const cat = CATEGORIES[e.category];
                   return (
                     <tr
                       key={createListKey(e, index)}
->>>>>>> origin/main
                       onClick={() => setSelected(e)}
                       className="cursor-pointer border-b border-border/40 transition-colors hover:bg-surface/40"
                     >

@@ -16,10 +16,7 @@ import {
 import { useTelemetry } from "@/features/telemetry/store";
 import { CATEGORIES, SEVERITY_META } from "@/lib/constants";
 import type { GuardianEvent, Severity } from "@/lib/types";
-<<<<<<< HEAD
-=======
 import { createListKey } from "@/lib/utils";
->>>>>>> origin/main
 
 export default function TimelinePage() {
   const events = useTelemetry((s) => s.events);
@@ -67,11 +64,7 @@ export default function TimelinePage() {
               const sev = SEVERITY_META[e.severity];
               return (
                 <motion.button
-<<<<<<< HEAD
-                  key={e.id}
-=======
                   key={createListKey(e, i)}
->>>>>>> origin/main
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.35, delay: Math.min(i * 0.03, 0.4) }}

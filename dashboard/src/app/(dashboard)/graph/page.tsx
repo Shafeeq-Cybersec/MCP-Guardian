@@ -6,11 +6,7 @@ import { Users, Bot, Server, ShieldCheck, ZoomIn, ZoomOut, Maximize } from "luci
 import { PageHeader, Panel } from "@/components/dashboard/primitives";
 import { GuardianMark } from "@/components/brand/logo";
 import { useTelemetry } from "@/features/telemetry/store";
-<<<<<<< HEAD
-import { cn } from "@/lib/utils";
-=======
 import { cn, createListKey } from "@/lib/utils";
->>>>>>> origin/main
 
 /* ------------------------------------------------------------------ *
  *  Bespoke attack-propagation graph.
@@ -184,15 +180,9 @@ export default function GraphPage() {
             </svg>
 
             {/* nodes */}
-<<<<<<< HEAD
-            {NODES.map((n) => (
-              <NodeCard
-                key={n.id}
-=======
             {NODES.map((n, index) => (
               <NodeCard
                 key={createListKey(n, index)}
->>>>>>> origin/main
                 node={n}
                 dimmed={hover !== null && hover !== n.id && !isNeighbor(n.id, hover)}
                 onHover={setHover}
