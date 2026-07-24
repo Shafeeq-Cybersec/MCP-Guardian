@@ -73,15 +73,15 @@ flowchart LR
 
 ### Detectors
 
-| Detector | What it catches |
-|----------|----------------|
-| `PromptInjection` | Instruction-override, jailbreak patterns |
-| `ToolPoisoning` | Hidden instructions inside tool responses |
-| `PII` | Emails, phone numbers, credit card numbers (Luhn), SSNs |
-| `EncodedPayload` | Base64, hex, URL-encoded, HTML-entity obfuscation |
-| `Toxicity` | Hate speech, harmful language |
-| `PolicyViolation` | Banned content, off-topic requests |
-| `SchemaAnomaly` | Unexpected fields / structural inconsistencies |
+| # | Detector | Tier | Technique | What it catches |
+|---|----------|------|-----------|----------------|
+| 1 | `PromptInjectionDetector` | Hybrid | 8 regex patterns + `sentence-transformers` cosine similarity | Instruction-overrides (`"ignore all previous instructions"`), jailbreak personas, role-tag injections, credential exfiltration attempts |
+| 2 | `ToolPoisoningDetector` | Heuristic | Regex + zero-width char scan | Hidden directives in tool responses — HTML comments, bracketed `[[system:]]` tags, conditional directives, zero-width Unicode characters |
+| 3 | `PIIDetector` | Hybrid | Regex + Luhn checksum + Presidio NER | Emails, SSNs, credit cards (Luhn-validated), phone numbers, API keys (`sk-`, `AKIA`, `ghp_`), names & locations via NER |
+| 4 | `EncodedPayloadDetector` | Heuristic | Entropy analysis + decode-context check | Base64 (entropy > 3.2), hex escapes, URL-encoded runs, HTML entities — escalates if decoding reveals readable text; ignores plain hashes |
+| 5 | `ToxicityDetector` | Hybrid | Regex lexicon + Detoxify ML model | Threats, harassment, sexual content, hate slurs — ML tier catches subtle abuse (no banned words needed) |
+| 6 | `PolicyEngine` | Heuristic | Declarative regex rules (swappable) | Org-level violations: disable security controls, wire transfers, `rm -rf` / shell commands, bulk DB exports |
+| 7 | `SchemaAnomalyDetector` | Heuristic | JSON parse + depth/key analysis | Oversized payloads (>4 KB), excessive nesting (depth >6), suspicious JSON keys (`__proto__`, `exec`, `system`, `instructions`) |
 
 ### Folder Structure
 
