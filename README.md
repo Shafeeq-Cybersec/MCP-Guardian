@@ -1,173 +1,201 @@
+<div align="center">
+
 # 🛡️ MCP Guardian
 
-**A Real-Time Security Firewall That Protects AI Agents from Prompt Injection, Tool Poisoning, and Data Leaks**
+### Real-Time Bidirectional Security Firewall for AI Agents
 
-Team **Mutex** (RH-0045) — RUSH HOUR 24, National Engineering Challenge
-Panimalar Engineering College — Cyber Security (Software Track)
+An AI assistant you can actually watch defend itself. Guardian sits inline
+between the user, the AI, and its tools - inspecting **every message and every
+tool response** in real time. Prompt injection, tool poisoning, and data leaks
+are scored, explained, and stopped **before the model ever consumes them**.
 
-| # | Name | Role | Module Ownership |
-|---|------|------|-------------------|
-| 01 | Sabarish R | Team Lead | Backend core (API, auth, WS proxy) |
-| 02 | Vignesh R | Member | Detection engine |
-| 03 | Shafeeq S | Member | MCP server + bridge |
-| 04 | Rohith V K | Member | Dashboard + live chat UI |
+`OpenAI-grade chat` × `Microsoft Defender XDR` - the whole security pipeline,
+visible in the conversation.
+
+</div>
 
 ---
 
-## Problem Statement
+## The idea
 
-AI agents are no longer just chatbots. They now connect to files, databases, and
-outside tools using a standard called the Model Context Protocol (MCP), and that
-opens up two weak spots.
+The moment an AI agent can call tools, every message becomes executable. A single
+poisoned document or a cleverly worded prompt can turn an assistant into an insider
+threat - and traditional WAFs never see it.
 
-First, a tool the agent trusts can be tampered with to hide secret instructions
-inside a normal-looking response, quietly hijacking what the agent does — this is
-known as prompt injection or tool poisoning. Second, a user's own prompt can
-accidentally send private information or unsafe content straight into the AI.
+MCP Guardian makes the defense **the demo**. You chat with a real assistant; when
+it calls a tool, you watch Guardian intercept the response, inspect it, and render a
+verdict - all as a live, scrollable timeline inside the chat. Ask it to read a
+poisoned document and you see the tool succeed, the threat get caught, and the AI
+refuse - with the malicious lines isolated in a sanitized preview.
 
-Most security tools today only check the user's input, or scan the setup once and
-produce a report to read later. Nobody is watching the live conversation and
-stopping an attack the moment it happens. That is the gap we are setting out to
-close.
+## What you can do in 60 seconds
 
-## Our Solution
+- **Chat** with the assistant (`/chat`) - streams real replies (Groq) and calls real tools.
+- **Read a clean document** → watch the full pipeline end in a green `ALLOW`.
+- **Read a poisoned document** → the tool succeeds, Guardian catches the embedded
+  injection, and blocks the response with **evidence** (the exact indicator, its line,
+  and a confidence level) plus a **sanitized preview** showing the threat isolated.
+- **Upload your own file** → it's read through the real MCP tool and inspected live.
+- **Try to jailbreak it** → blocked on the way *in*, before any tool runs.
+- Flip to the **SOC dashboard** (`/overview`) for the fleet-wide view.
 
-MCP Guardian will be a real-time security firewall that sits quietly in the middle
-of the conversation between the user, the AI agent, and its tools — a bodyguard
-that checks every message going in both directions before it ever reaches the AI.
+## Detection engine
 
-On the user side, it will scan prompts for private information and for toxic or
-unsafe content. On the tool side, it will inspect every tool response for hidden
-instructions, disguised payloads, and unexpected data patterns. A fast heuristic
-first-pass will catch obvious cases instantly, and anything ambiguous will be
-escalated to an AI judge that assigns a risk score (0–100), names the attack
-category, and explains its reasoning in plain language.
+Seven detectors run concurrently on every message, fused into one verdict:
 
-Every message will resolve to one of four verdicts: **Allow, Sanitize, Quarantine,
-or Block**. A live dashboard will stay calm and green while traffic is clean, and
-flip to a red alert state the instant something is caught.
+| Category | Verdict range | Engine |
+| --- | --- | --- |
+| Prompt Injection | up to `BLOCK` | heuristic + optional MiniLM embeddings |
+| Tool Poisoning | up to `BLOCK` | hidden-directive / structural analysis |
+| PII Leakage | `SANITIZE` → `BLOCK` | Luhn-checked regex + optional Presidio NER |
+| Toxicity / Harassment | `SANITIZE` → `BLOCK` | lexicon (harassment, slurs, sexual) + optional Detoxify |
+| Policy Violation | `QUARANTINE` | declarative rule engine |
+| Encoded Payload | `QUARANTINE` → `BLOCK` | entropy + base64/hex/url decoding (IOC-aware) |
+| Schema Anomaly | `SANITIZE` | JSON-schema drift & control-key detection |
 
-## Planned Features
+Every verdict carries a **risk score (0–100)**, a **threat category**, an
+**explanation**, **evidence**, a **recommended action**, and a final verdict:
+`ALLOW · SANITIZE · QUARANTINE · BLOCK`.
 
-- Real-time bidirectional interception at both the user→agent and tool→agent boundaries
-- Fast, deterministic, offline heuristic detection layer (no ML dependency required to run)
-- Optional AI-judge escalation tier (Groq) for ambiguous cases: risk score + category + explanation
-- Four-tier verdict system: `ALLOW · SANITIZE · QUARANTINE · BLOCK`
-- Real (not mocked) sandboxed MCP server as the tool target
-- Live SOC-style dashboard with WebSocket event stream
-- Auth (JWT) for the dashboard/API
-- Stretch goal: Attack Propagation Graph — visualize how far an attack could have
-  spread through the agent's tool chain if it had not been blocked
+### Hybrid detection (fast + smart)
 
-## Planned Tech Stack
+Heuristics are the always-on floor - **sub-millisecond, deterministic, offline,
+and impossible to prompt-inject**. When they're inconclusive, Guardian escalates to
+an **LLM semantic classifier** (Groq) for a second opinion that catches novel
+phrasing the lexicons miss (e.g. a roleplay jailbreak, or keyword-free harassment).
+The classifier can only *add* risk - it can escalate a verdict but never talk the
+system down from a heuristic block.
 
-**Frontend** — Next.js, React, TypeScript, Tailwind CSS, Recharts
-**Backend** — FastAPI, Python 3.12, WebSockets, Server-Sent Events, JWT
-**AI/Detection** — heuristic rule engine (regex/entropy/schema checks) + Groq for
-LLM-based semantic classification as a second-opinion tier
-**Tooling** — official MCP Python SDK (sandboxed stdio server), Docker, GitHub Actions (CI)
+## Architecture
 
-## Planned Architecture
-
-```mermaid
-flowchart LR
-    U[User] -->|prompt| A[AI Agent]
-    A -->|inbound inspect| G1{Guardian: Inbound Check}
-    G1 -->|clean| A
-    G1 -->|flagged| V1[Verdict Engine]
-
-    A -->|tool call| M[Sandboxed MCP Server]
-    M -->|tool response| G2{Guardian: Outbound Check}
-    G2 -->|clean| A
-    G2 -->|flagged| V1
-
-    V1 --> D{Heuristics conclusive?}
-    D -->|yes| VER[Verdict: ALLOW / SANITIZE / QUARANTINE / BLOCK]
-    D -->|no, ambiguous| L[AI Judge - Groq]
-    L --> VER
-
-    VER --> DASH[Live Dashboard: WebSocket Stream]
-    VER --> A
-    A -->|reply| U
+```
+                         ┌──────────── MCP GUARDIAN ────────────┐
+  User ─▶ AI assistant ─▶│  inbound inspect                     │
+          (Groq)         │        │                             │
+                         │        ▼                             │
+                         │  tool call ─▶ real MCP server ──────▶│─▶ sandboxed
+                         │        │        (stdio JSON-RPC)      │   filesystem
+                         │        ▼                             │
+                         │  OUTBOUND inspect ◀── tool response ─│◀─ (poisoned?)
+                         │        │                             │
+                         │  7 detectors → aggregate → verdict   │
+                         │  (+ LLM escalation when unsure)      │
+                         │        │                             │
+                         │        ▼  ALLOW / SANITIZE /         │
+  User ◀── AI reply ◀────│    QUARANTINE / BLOCK                │
+                         └──────────────────────────────────────┘
 ```
 
-## Planned Workflow
+The engine **degrades gracefully**: heuristics need zero ML dependencies and upgrade
+automatically if Presidio / Detoxify / embeddings are installed. The LLM (replies +
+hybrid detection) uses **Groq → deterministic** fallback, so nothing is ever blocked
+on an optional service.
 
-1. User sends a message to the AI agent.
-2. Guardian intercepts inbound: checks for PII, prompt injection, jailbreak attempts.
-3. If clean, the agent proceeds; if flagged, it goes to the verdict engine.
-4. When the agent needs a tool, the call goes to a real, sandboxed MCP server.
-5. The tool's response is intercepted outbound before the agent sees it: checked
-   for hidden instructions, poisoning, encoded payloads, schema anomalies.
-6. Heuristics resolve the obvious cases instantly; ambiguous cases escalate to the
-   AI judge for a scored, explained verdict.
-7. Every event (verdict, score, category, evidence) streams live to the dashboard
-   over WebSocket.
-8. The agent's final reply reaches the user only after passing inspection.
+## What's real vs. simulated (we're honest about this)
 
-## Planned Folder Structure
+| Component | Status |
+| --- | --- |
+| Detection engine, risk scoring, verdicts | **Real** |
+| Auth (JWT + bcrypt) | **Real** |
+| `read_document` / `list_documents` tools | **Real** - a genuine sandboxed MCP server (official SDK, stdio JSON-RPC) |
+| Uploaded-document inspection | **Real** - your file is read through the MCP tool |
+| Chat replies + hybrid detection (with a Groq key) | **Real LLM** |
+| `web_search` / `send_notification` tools | **Simulated** - clearly labeled; output still runs through the real engine |
+| SOC dashboard's ambient fleet traffic | **Simulated** - a traffic generator so the dashboard looks alive (the chat's live rail shows only *your* real activity) |
+
+## Stack
+
+**Frontend** - Next.js 16 · React 19 · TypeScript · Tailwind v4 · Framer Motion · Recharts · Radix UI
+**Backend** - FastAPI · Python 3.12 · Server-Sent Events · WebSockets · JWT · Groq · (optional) Presidio / Detoxify / embeddings / Redis / Ollama
+**Tooling** - official MCP Python SDK (isolated venv) · Docker · GitHub Actions
+
+---
+
+## Quick start
+
+```powershell
+# Windows / PowerShell
+./scripts/setup.ps1     # backend venv, MCP-server venv, dashboard deps, env files
+./scripts/start.ps1     # launches backend + dashboard
+```
+
+```bash
+# macOS / Linux
+./scripts/setup.sh
+./scripts/start.sh
+```
+
+Then open **http://localhost:5173/chat**. Log in with the demo account or click
+**Continue with demo access**:
+
+```
+email:    demo@mcpguardian.dev
+password: guardian
+```
+
+> **Optional but recommended:** paste a free [Groq](https://console.groq.com) key
+> into `backend/.env` as `GUARDIAN_GROQ_API_KEY=...` for real streaming LLM replies
+> and the hybrid detection tier. Without it, everything still works (deterministic
+> replies, heuristics-only detection). `backend/.env` is gitignored.
+
+### With Docker
+
+```bash
+docker compose up --build      # dashboard :5173 · API/docs :8000/docs
+# pass a key:  GUARDIAN_GROQ_API_KEY=gsk_... docker compose up --build
+```
+
+### Smoke test
+
+```bash
+python scripts/smoke_test.py   # asserts key verdicts against the running backend
+```
+
+## The three-minute demo
+
+See **[DEMO.md](DEMO.md)** for the judge walkthrough. TL;DR - open a fresh chat and
+click the suggestion chips left to right: clean read (`ALLOW`), poisoned read
+(`BLOCK` with evidence + sanitized preview), then a jailbreak (`BLOCK` before any
+tool runs). The right-hand rail's counters climb from zero as you go.
+
+## API
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/health` | Status + detector capabilities |
+| `POST` | `/api/inspect` | Inspect one message (the inline firewall call) |
+| `POST` | `/api/chat/turn` | Stream one agent turn (SSE) - the chat pipeline |
+| `GET` | `/api/chat/capabilities` | LLM provider + available tools |
+| `POST` | `/api/mcp/call` · `GET /api/mcp/tools` · `/status` | Call the real sandboxed MCP tool |
+| `POST` | `/api/auth/login` · `/register` | Authentication |
+| `GET` | `/api/events` · `/api/stats` · `/api/reports/*` | Telemetry & reporting (JWT) |
+| `WS` | `/ws/stream` | Live event stream |
+
+Full interactive docs at **`/docs`** (Swagger UI).
+
+## Testing
+
+```bash
+cd backend && ./.venv/Scripts/python -m pytest -q     # 68 tests (engine, API, chat, MCP, evidence)
+cd dashboard && npx tsc --noEmit                       # type-check
+```
+
+## Project layout
 
 ```
 mcp-guardian/
-├── backend/          # FastAPI app: auth, API routes, detection engine, WS
-├── dashboard/         # Next.js frontend: chat UI + SOC dashboard
+├── dashboard/        # Next.js 16 - marketing, auth, AI chat (primary), SOC dashboard
+├── backend/          # FastAPI - detection engine, chat orchestrator, auth, simulator
 ├── mcp-servers/
-│   └── filesystem/    # sandboxed MCP server (isolated venv)
-├── sandbox/           # files the MCP server is allowed to read (test docs)
-├── scripts/           # setup/start/smoke-test scripts
-├── .github/workflows/ # CI
+│   └── filesystem/   # a real, sandboxed MCP server (isolated venv)
+├── sandbox/          # the only files the MCP server can read (incl. a poisoned demo doc)
+├── scripts/          # setup, start, smoke_test
 ├── docker-compose.yml
-└── README.md
+└── .github/workflows/ci.yml
 ```
-
-## Installation & Usage (planned)
-
-```bash
-# clone
-git clone https://github.com/Shafeeq-Cybersec/MCP-Guardian.git
-cd MCP-Guardian
-
-# setup (once scaffolding lands)
-./scripts/setup.sh      # or setup.ps1 on Windows
-./scripts/start.sh       # or start.ps1
-```
-
-Full setup instructions will be added as the backend and dashboard are scaffolded.
-
-## API / Database Documentation
-
-_To be added once the API is implemented._
-
-## AI/ML Workflow
-
-_To be added once the detection engine and AI-judge escalation are implemented._
-
-## Security Measures
-
-Planned: JWT-based auth, sandboxed MCP server restricted to a local directory,
-input/output inspection at both trust boundaries, fail-safe defaults (block on
-detector failure rather than silently allow).
-
-## Testing & Performance
-
-_To be added once test suites are written and run against the built system._
-
-## Challenges Faced & Future Scope
-
-_To be filled in as development progresses._
-
-## Demo Screenshots / Video
-
-_To be added closer to submission, once the UI and end-to-end flow are working._
-
-## References
-
-- Model Context Protocol (MCP) specification
-- Groq API documentation
-
-## Status
-
-🚧 Kickoff — problem defined, architecture planned, build starting.
 
 ---
-Built for RUSH HOUR 24 — Sathyabama Institute of Science and Technology.
+
+<div align="center">
+Built for the RUSH HOUR 24 National Hackathon.
+</div>
