@@ -110,3 +110,8 @@ class EventStore:
         """Return (sources, tools) seen so far — used by the health endpoint."""
         async with self._lock:
             return list(self._seen_sources), list(self._seen_tools)
+
+
+# Module-level singleton — import with `from app.services.event_store import store`.
+# Call `await store.connect()` during application startup to wire up Redis if available.
+store = EventStore()
