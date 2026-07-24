@@ -5,7 +5,12 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+<<<<<<< HEAD
     "start": "next start"
+=======
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+>>>>>>> origin/main
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.2.2",

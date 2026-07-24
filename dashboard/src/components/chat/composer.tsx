@@ -56,10 +56,27 @@ export function Composer({
     if (!files) return;
     const next: Attachment[] = [];
     for (const f of Array.from(files).slice(0, 4)) {
+<<<<<<< HEAD
       const isText = /\.(txt|md|json|ya?ml|csv|log|js|ts|py|html|css)$/i.test(f.name) || f.type.startsWith("text/");
       let content: string | undefined;
       if (isText && f.size <= MAX_ATTACH_BYTES) {
         content = await f.text();
+=======
+      // Attempt to read any file ≤ 32 KB as UTF-8 text so Guardian can
+      // inspect its content regardless of extension (.pdf, .docx, etc.).
+      // Truly binary files will produce garbled text, but demo/test payloads
+      // are text-based and this lets Guardian scan them properly.
+      let content: string | undefined;
+      if (f.size <= MAX_ATTACH_BYTES) {
+        try {
+          content = await f.text();
+          // Discard if the result looks entirely non-printable (real binary).
+          const printable = content.replace(/[\x00-\x08\x0E-\x1F\x7F]/g, "");
+          if (printable.length < content.length * 0.7) content = undefined;
+        } catch {
+          content = undefined;
+        }
+>>>>>>> origin/main
       }
       next.push({ name: f.name, size: f.size, content });
     }
