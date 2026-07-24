@@ -26,3 +26,31 @@ export function formatCompact(value: number) {
     maximumFractionDigits: 1,
   }).format(value);
 }
+
+/** Build a stable React list key from a value and its position. */
+export function createListKey(value: unknown, index: number) {
+  if (value === null || value === undefined) {
+    return `item-${index}`;
+  }
+
+  if (typeof value === "string") {
+    return `${value}-${index}`;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return `${value}-${index}`;
+  }
+
+  if (typeof value === "object") {
+    const candidate = value as Record<string, unknown>;
+    const parts = [candidate.id, candidate.key, candidate.timestamp, candidate.title, candidate.name, candidate.slug]
+      .filter((part): part is string | number | boolean => part !== undefined && part !== null)
+      .map((part) => String(part));
+
+    if (parts.length > 0) {
+      return `${parts.join("::")}-${index}`;
+    }
+  }
+
+  return `item-${index}`;
+}

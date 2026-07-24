@@ -168,12 +168,12 @@ export default function OverviewPage() {
             </div>
           ) : (
             <div className="divide-y divide-border">
-              {incidents.slice(0, 5).map((inc) => {
+              {incidents.slice(0, 5).map((inc, index) => {
                 const cat = CATEGORIES[inc.category];
                 const sev = SEVERITY_META[inc.severity];
                 return (
                   <div
-                    key={inc.id}
+                    key={`${inc.id}-${inc.timestamp}-${inc.title}-${index}`}
                     className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-surface/40"
                   >
                     <span

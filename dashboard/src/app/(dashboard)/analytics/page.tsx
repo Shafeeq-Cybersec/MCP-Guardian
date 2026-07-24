@@ -12,7 +12,7 @@ import {
 import { useTelemetry } from "@/features/telemetry/store";
 import { CATEGORIES } from "@/lib/constants";
 import type { ThreatCategory } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, createListKey } from "@/lib/utils";
 
 export default function AnalyticsPage() {
   const traffic = useTelemetry((s) => s.traffic);
@@ -105,8 +105,8 @@ export default function AnalyticsPage() {
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Panel title="Connected agents" description="Trust scores and blocked counts" contentClassName="p-0">
           <div className="divide-y divide-border">
-            {agents.map((a) => (
-              <div key={a.id} className="flex items-center gap-3 px-5 py-3">
+            {agents.map((a, index) => (
+              <div key={createListKey(a, index)} className="flex items-center gap-3 px-5 py-3">
                 <span className="flex size-8 items-center justify-center rounded-lg bg-surface text-primary-bright">
                   <Bot className="size-4" />
                 </span>
@@ -138,8 +138,8 @@ export default function AnalyticsPage() {
 
         <Panel title="MCP servers" description="Connection status and exposure" contentClassName="p-0">
           <div className="divide-y divide-border">
-            {servers.map((s) => (
-              <div key={s.id} className="flex items-center gap-3 px-5 py-3">
+            {servers.map((s, index) => (
+              <div key={createListKey(s, index)} className="flex items-center gap-3 px-5 py-3">
                 <span className="flex size-8 items-center justify-center rounded-lg bg-surface text-foreground">
                   <Server className="size-4" />
                 </span>
