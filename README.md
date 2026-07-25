@@ -47,16 +47,14 @@ Every message resolves to one of four verdicts:
 
 ---
 
-## ⚡ RUSH HOUR Hackathon Challenge — Assigned Feature & Produced Solution
-
-> **Team Name:** Mutex  
-> **Team ID:** RH-0045  
+## ⚡ ZERO-HOUR Challenge — Assigned Feature & Produced Solution
+ 
 > **Evaluation Phase:** Post-Evaluation Judge Challenge Integration  
 
 ### 🔒 Challenge Statement (Task Locker)
-```text
+
 Multi-Tool Attack Chain Detection Engine: Correlate suspicious activities across multiple AI tool calls and sessions to detect coordinated prompt-injection and data-exfiltration attacks that single-request analysis cannot identify.
-```
+
 
 ### 💡 Produced Solution: Stateful Multi-Tool Correlation Engine & Live Graph
 
