@@ -16,9 +16,9 @@ Panimalar Engineering College — Cyber Security (Software Track)
 
 ## 🌟 Visual Overview
 
-| Attack Propagation Graph | Overview Dashboard |
+| Multi-Tool Attack Chain Detection Engine (RH-0045) | Overview Dashboard |
 |---|---|
-| ![Attack Propagation Graph](./docs/screenshots/09-attack-propagation-graph.jpeg) | ![SOC Overview Dashboard](./docs/screenshots/05-overview-dashboard.jpeg) |
+| ![Multi-Tool Attack Chain Detection Engine](./docs/screenshots/14-multi-tool-attack-chain-graph.png) | ![SOC Overview Dashboard](./docs/screenshots/05-overview-dashboard.jpeg) |
 
 ---
 
@@ -87,6 +87,7 @@ Guardian sits inline during active chat sessions, intercepting prompts, tool par
 | Screenshot | Description |
 |------------|-------------|
 | ![AI Chat Quarantine Verdict](./docs/screenshots/01-ai-chat-quarantine.jpeg) | **Real-Time Quarantine Interception**<br>When reading `vendor-config.txt`, Guardian inspects the response payload, detects an encoded obfuscated payload, calculates a risk score of 50, and issues a **QUARANTINE** verdict to isolate the threat. |
+| ![AI Chat Inbound Prompt Block](./docs/screenshots/15-ai-chat-inbound-prompt-block.jpg) | **Inbound Prompt Injection Interception (BLOCK)**<br>Guardian inspects raw user messages before they reach the model, detecting `"Ignore all previous instructions"`, `"Developer Mode"`, and role-hijack patterns with exact evidence lines, generating a risk score of 90 and issuing an immediate **BLOCK** verdict. |
 | ![AI Chat File Inspection](./docs/screenshots/03-ai-chat-file-inspection.jpeg) | **Poisoned File Response Interception**<br>Inspecting uploaded files (`poisoned_report.txt`). Guardian intercepts hidden directives before the LLM processes them, preventing indirect prompt injection. |
 | ![Sanitized Threat Evidence Breakdown](./docs/screenshots/04-evidence-breakdown.jpeg) | **Granular Evidence & Recommended Action**<br>Detailed view of quarantined threats showing exact lines, payload types, sanitized safe previews, and actionable mitigation guidance. |
 
@@ -110,6 +111,7 @@ Comprehensive forensic tools enable security analysts to trace multi-agent attac
 
 | Screenshot | Description |
 |------------|-------------|
+| ![Multi-Tool Attack Chain Detection Engine](./docs/screenshots/14-multi-tool-attack-chain-graph.png) | **Multi-Tool Attack Chain Detection Engine (RH-0045)**<br>Live interactive topology graph correlating multi-hop tool calls (`db.query` → `email.send` → `filesystem.read` → `github.pr` → `web.search`). Tracks multi-step threat sequences across AI tool invocations, highlights at-risk hops, and enforces coordinated containment. |
 | ![Attack Timeline](./docs/screenshots/08-attack-timeline.jpeg) | **Attack Timeline**<br>A chronological thread documenting every intercepted threat with risk severity tags (Critical/High), risk scores, and detailed agent interaction trails. |
 | ![Attack Propagation Graph](./docs/screenshots/09-attack-propagation-graph.jpeg) | **Attack Propagation Graph**<br>Visualizes flow paths between Users/API Clients, AI Agents (`orchestrator`, `support-copilot`, `research-agent`), Guardian Inline Firewall, and connected MCP Tools (`filesystem-mcp`, `vault-mcp`, `github-mcp`). |
 | ![Audit Logs](./docs/screenshots/10-audit-logs.jpeg) | **Full Audit Logs**<br>Filterable audit trail detailing message IDs, timestamps, directions (IN/OUT), categories, source-target pairs, verdicts, risk scores, sub-millisecond latencies, and CSV export capabilities. |
