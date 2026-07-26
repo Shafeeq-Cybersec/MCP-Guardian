@@ -2,8 +2,9 @@
 
 **A Real-Time Security Firewall That Protects AI Agents from Prompt Injection, Tool Poisoning, and Data Leaks**
 
-Team **Mutex** (RH-0045) — RUSH HOUR 24, National Engineering Challenge  
-Panimalar Engineering College — Cyber Security (Software Track)
+Team **Mutex** (RH-0045) — **RUSH HOUR 24: National Hackathon**  
+Hosted by **Sathyabama Institute of Science and Technology**  
+Team from **Panimalar Engineering College**
 
 | # | Name | Module Ownership |
 |---|------|-------------------|
