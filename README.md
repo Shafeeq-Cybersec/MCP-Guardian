@@ -9,7 +9,7 @@ Panimalar Engineering College — Cyber Security (Software Track)
 |---|------|-------------------|
 | 01 | Sabarish R | Backend core (API, auth, WS proxy) |
 | 02 | Vignesh R | Detection engine |
-| 03 | Shafeeq S | MCP server + bridge |
+| 03 | Shafeeq S | MCP Integration & Sandboxed Tool Execution |
 | 04 | Rohith V K | Dashboard + live chat UI |
 
 ---
